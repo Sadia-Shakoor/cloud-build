@@ -1,5 +1,4 @@
 google-cloud-storage
 pymysql
-flask
 functions-framework
 
