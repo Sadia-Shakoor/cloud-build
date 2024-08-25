@@ -1,0 +1,15 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'functions'
+      - 'deploy'
+      - 'etl_pipeline'
+      - '--region=us-central1'
+      - '--runtime=python311'
+      - '--trigger-http'
+      - '--entry-point=etl_pipeline'
+      - '--allow-unauthenticated'
+
+# Substitute the region and runtime as needed.
+timeout: '900s'
+
