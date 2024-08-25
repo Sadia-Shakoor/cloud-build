@@ -3,21 +3,18 @@ import csv
 from google.cloud import storage
 import pymysql
 import os
-from flask import Flask
-
-app = Flask(__name__)
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = 'data-on-cloud-431403-933827d894b0.json'
+from flask import jsonify
 
 # Configuration
 PROJECT_ID = 'data-on-cloud-431403'
-HOST='34.171.167.187'
+HOST = '34.171.167.187'
 DB_USER = 'root'
 DB_PASSWORD = 'password'
 DB_NAME = 'employeedb'
 GCS_BUCKET_NAME = 'first_data_bkt'
 GCS_JSON_FILE_NAME = 'data.json'
 GCS_CSV_FILE_NAME = 'data.csv'
-GCS_OUTPUT_JSON_FILE_NAME = 'output.json'
+GCS_OUTPUT_JSON_FILE_NAME = 'output_data1.json'
 
 # Initialize GCS client
 storage_client = storage.Client()
@@ -60,29 +57,26 @@ def upload_to_gcs(bucket_name, file_name, data):
     blob = bucket.blob(file_name)
     blob.upload_from_string(json.dumps(data, indent=2), content_type='application/json')
 
-@app.route('/')
-def run_pipeline():
-    print(f"Attempting to download {GCS_JSON_FILE_NAME} from bucket {GCS_BUCKET_NAME}")
+def etl_pipeline(request):
+    """HTTP Cloud Function to execute the ETL pipeline."""
+    try:
+        print(f"Attempting to download {GCS_JSON_FILE_NAME} from bucket {GCS_BUCKET_NAME}")
 
-    # Read data from GCS (JSON and CSV)
-    json_data = read_from_gcs(GCS_BUCKET_NAME, GCS_JSON_FILE_NAME)
-    csv_data = read_from_gcs(GCS_BUCKET_NAME, GCS_CSV_FILE_NAME)
+        # Read data from GCS (JSON and CSV)
+        json_data = read_from_gcs(GCS_BUCKET_NAME, GCS_JSON_FILE_NAME)
+        csv_data = read_from_gcs(GCS_BUCKET_NAME, GCS_CSV_FILE_NAME)
 
-    # Read data from Cloud SQL
-    sql_data= "sql"
-    #sql_data = read_from_sql()
-    #print(sql_data)
+        # Read data from Cloud SQL
+        sql_data = read_from_sql()
+        print(sql_data)
 
-    # Transform data
-    transformed_data = transform_to_json(sql_data, json_data, csv_data)
+        # Transform data
+        transformed_data = transform_to_json(sql_data, json_data, csv_data)
 
-    # Upload transformed data to GCS
-    upload_to_gcs(GCS_BUCKET_NAME, GCS_OUTPUT_JSON_FILE_NAME, transformed_data)
-    #print('success')
-    return f"Data pipeline executed successfully in {GCS_OUTPUT_JSON_FILE_NAME}."
+        # Upload transformed data to GCS
+        upload_to_gcs(GCS_BUCKET_NAME, GCS_OUTPUT_JSON_FILE_NAME, transformed_data)
 
-
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
-    
+        return jsonify({"status": "success", "message": "Data pipeline executed successfully."}), 200
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
